@@ -8,9 +8,13 @@ import {
   View,
   Image,
   TouchableHighlight,
+  TouchableOpacity,
 } from 'react-native';
+import Modal from 'react-native-modal';
+import {WebView} from 'react-native-webview';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {useNavigation} from '@react-navigation/native';
 import axios from 'axios';
 
 const Stack = createNativeStackNavigator();
@@ -18,6 +22,8 @@ const Stack = createNativeStackNavigator();
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   movieItem: {
     margin: 5,
@@ -47,6 +53,29 @@ const styles = StyleSheet.create({
     marginTop: 5,
     flexWrap: 'wrap',
   },
+  detailsContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  videoButton: {
+    color: 'blue',
+    textDecorationLine: 'underline',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  modalContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webview: {
+    width: 300,
+    height: 300,
+  },
+  genreText: {
+    fontSize: 14,
+    color: 'gray', // You can adjust the color as needed
+  },
 });
 
 function MoviesList({navigation}) {
@@ -55,7 +84,7 @@ function MoviesList({navigation}) {
   useEffect(() => {
     axios
       .get(
-        'https://api.themoviedb.org/3/movie/now_playing?api_key=15ef9e772da6656c75fbd9f1773cb945&append_to_response=videos',
+        'https://api.themoviedb.org/3/movie/now_playing?api_key=15ef9e772da6656c75fbd9f1773cb945&append_to_response=genres,videos',
       )
       .then(response => {
         console.log(response.data.results);
@@ -125,6 +154,25 @@ const MovieListScreen = ({navigation}) => {
 
 const MovieDetailScreen = ({route}) => {
   const {movie} = route.params;
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [modalVideo, setModalVideo] = useState(null);
+  const [movieVideoData, setMovieVideoData] = useState(null);
+
+  useEffect(() => {
+    axios
+      .get(
+        `https://api.themoviedb.org/3/movie/${movie.id}?api_key=15ef9e772da6656c75fbd9f1773cb945&append_to_response=videos,genres`,
+      )
+      .then(response => {
+        setMovieVideoData(response.data);
+      });
+  }, [movie.id]);
+
+  const toggleModal = video => {
+    setModalVisible(!isModalVisible);
+    setModalVideo(video);
+  };
+
   let IMAGEPATH = 'http://image.tmdb.org/t/p/w500';
   let imageurl = IMAGEPATH + movie.backdrop_path;
 
@@ -134,6 +182,45 @@ const MovieDetailScreen = ({route}) => {
       <Text style={styles.title}>{movie.title}</Text>
       <Text style={styles.text}>{movie.release_date}</Text>
       <Text style={styles.text}>{movie.overview}</Text>
+
+      {movieVideoData && movieVideoData.genres && (
+        <>
+          <Text style={styles.title}>Genres:</Text>
+          <ScrollView style={styles.detailsContainer}>
+            {movieVideoData.genres.map((genre, index) => (
+              <Text key={index} style={styles.genreText}>
+                {genre.name}
+              </Text>
+            ))}
+          </ScrollView>
+        </>
+      )}
+
+      {movieVideoData &&
+      movieVideoData.videos &&
+      movieVideoData.videos.results &&
+      movieVideoData.videos.results.length > 0 ? (
+        movieVideoData.videos.results.map((video, index) => (
+          <TouchableOpacity key={index} onPress={() => toggleModal(video)}>
+            <Text style={styles.videoButton}>{video.name}</Text>
+          </TouchableOpacity>
+        ))
+      ) : (
+        <Text>No videos available</Text>
+      )}
+
+      <Modal isVisible={isModalVisible} onBackdropPress={toggleModal}>
+        <View style={styles.modalContent}>
+          {modalVideo && (
+            <WebView
+              source={{
+                uri: `https://www.youtube.com/embed/${modalVideo.key}?rel=0&autoplay=0&showinfo=0&controls=1`,
+              }}
+              style={styles.webview}
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
