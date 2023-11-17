@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   genreText: {
     fontSize: 14,
-    color: 'gray', // You can adjust the color as needed
+    color: 'gray',
   },
 });
 
